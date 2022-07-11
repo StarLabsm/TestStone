@@ -1,39 +1,49 @@
 queue_rules:
   - name: shared_queue
     conditions:
-      - "#approved-reviews-by>=1"
+      - "#approved-reviews-by>=2"
       - check-success=stonedb-build
 
 pull_request_rules:
-  - name: put bug fix to queue on approval with high priority
+  - name: automatic merge of 🚑 hotfix (high priority)
     conditions:
       - "#approved-reviews-by>=1"
-      - check-success=stonedb-build
       - label=A-bug
-      
     actions:
       queue:
         name: shared_queue
-
-  - name: put other pr to queue
+        method: merge
+        priority: high   
+        
+  - name: automatic merge squash on website/docs(low priority)
     conditions:
       - "#approved-reviews-by>=1"
-      - check-success=stonedb-build
-      - label!=A-bug
-
+      - -files~=^(!?website/)
     actions:
       queue:
         name: shared_queue
+        method: squash
+        priority: low
+
+  - name: put other pr to merge queue
+    conditions:
+      - "#approved-reviews-by>=1"
+      - label!=A-bug
+    actions:
+      queue:
+        name: shared_queue
+        method: squash
+        priority: medium
         
 # if there is a conflict in a approved PR, ping the author.
-  - name: ping author on conflicts
+  - name: ping author if there is conflicts
     conditions:
       - conflict
       - "#approved-reviews-by >= 1"
     actions:
       comment:
         message: |
-          This pull request has merge conflicts that must be resolved before it can be merged. @{{author}} please update it 🙏. 
+          This pull request has merge conflicts, you should resolve it before merged. @{{author}} please update it :)
 
           Try `@mergify update` or update manually.
 
@@ -46,4 +56,26 @@ pull_request_rules:
           Thanks for the contribution!
           I have applied any labels matching special text in your PR Changelog.
 
-          Please review the labels and make any necessary changes. 
+          Please review the labels and make any necessary changes.
+
+  - name: label on new feature
+    conditions:
+      - body~=(?m)^\[X\] New Feature
+    actions:
+      label:
+        add:
+          - PR-feature
+  - name: label on bug fix
+    conditions:
+      - body~=(?m)^\[X\] Bug Fix
+    actions:
+      label:
+        add:
+          - PR-bug
+  - name: label on Documentation
+    conditions:
+      - body~=(?m)^\[X\] Documentation
+    actions:
+      label:
+        add:
+          - PR-docs
